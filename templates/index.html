@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Bio Finder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --primary: #1e88e5;
+      --background: #f0f2f5;
+      --text: #333;
+      --card-bg: #fff;
+      --border-radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen;
+      background: var(--background);
+      color: var(--text);
+      margin: 0;
+      padding: 40px 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      background: var(--card-bg);
+      max-width: 800px;
+      width: 100%;
+      padding: 30px;
+      border-radius: var(--border-radius);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 28px;
+      color: var(--primary);
+    }
+
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 12px 0;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #1669c1;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .result {
+      margin-top: 30px;
+      display: none;
+    }
+
+    .candidates {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .candidate-card {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+    }
+
+    .candidate-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(30, 136, 229, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .candidate-card img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .candidate-card h3 {
+      margin: 10px 0 5px 0;
+      font-size: 18px;
+      color: var(--text);
+    }
+
+    .candidate-card .company {
+      color: #666;
+      font-weight: 500;
+      margin-bottom: 10px;
+    }
+
+    .candidate-card .snippet {
+      font-size: 14px;
+      color: #888;
+      line-height: 1.4;
+    }
+
+    .no-photo {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 40px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
+    .detail-view {
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: var(--border-radius);
+    }
+
+    .detail-view img {
+      max-width: 160px;
+      border-radius: 10px;
+      margin-top: 15px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .sources a {
+      display: block;
+      margin-top: 8px;
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .sources a:hover {
+      text-decoration: underline;
+    }
+
+    .back-button {
+      background-color: #666;
+      margin-bottom: 20px;
+      width: auto;
+      padding: 10px 20px;
+      display: inline-block;
+    }
+
+    .back-button:hover {
+      background-color: #555;
+    }
+
+    .confidence-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    .confidence-high {
+      background-color: #4caf50;
+      color: white;
+    }
+
+    .confidence-medium {
+      background-color: #ff9800;
+      color: white;
+    }
+
+    .confidence-low {
+      background-color: #f44336;
+      color: white;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 20px 10px;
+      }
+      .candidates {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Find a Professional Bio</h2>
+    <form id="bioForm">
+      <input type="text" name="name" id="nameInput" placeholder="Full Name (e.g. Tomer Sapir)" required>
+      <input type="text" name="company" id="companyInput" placeholder="Company (optional)">
+      <button type="submit" id="searchBtn">Search</button>
+    </form>
+
+    <div id="output" class="result"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('bioForm');
+    const output = document.getElementById('output');
+    const searchBtn = document.getElementById('searchBtn');
+    let currentName = '';
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      output.style.display = 'block';
+      output.innerHTML = '<p>Searching for candidates...</p>';
+      searchBtn.disabled = true;
+
+      const formData = new FormData(form);
+      currentName = formData.get('name');
+
+      const res = await fetch('/search/candidates', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      searchBtn.disabled = false;
+
+      if (data.error) {
+        output.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+        return;
+      }
+
+      if (data.count === 0) {
+        output.innerHTML = '<p>No candidates found. Try a different name or add a company.</p>';
+        return;
+      }
+
+      // If skip_selection flag is set, go straight to detail view
+      if (data.skip_selection && data.selected_candidate) {
+        await selectCandidate(0, encodeURIComponent(JSON.stringify(data.selected_candidate)));
+        return;
+      }
+
+      // Show candidate cards
+      let candidatesHtml = '<h3>Select the correct person:</h3><div class="candidates">';
+
+      data.candidates.forEach((candidate, idx) => {
+        const initials = candidate.name.split(' ').map(n => n[0]).join('');
+        const photoHtml = candidate.photo_url
+          ? `<img src="${candidate.photo_url}" alt="${candidate.name}">`
+          : `<div class="no-photo">${initials}</div>`;
+
+        candidatesHtml += `
+          <div class="candidate-card" onclick="selectCandidate(${idx}, '${encodeURIComponent(JSON.stringify(candidate))}')">
+            ${photoHtml}
+            <h3>${candidate.name}</h3>
+            <div class="company">${candidate.company}</div>
+            <div class="snippet">${candidate.snippet || 'Click for more details'}</div>
+          </div>
+        `;
+      });
+
+      candidatesHtml += '</div>';
+      output.innerHTML = candidatesHtml;
+    });
+
+    async function selectCandidate(idx, candidateJson) {
+      const candidate = JSON.parse(decodeURIComponent(candidateJson));
+
+      output.innerHTML = '<p>Loading detailed bio...</p>';
+
+      const formData = new FormData();
+      formData.append('name', candidate.name);
+      formData.append('company', candidate.company);
+      formData.append('source_url', candidate.source_url);
+
+      const res = await fetch('/search/detail', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        output.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+        return;
+      }
+
+      const confidenceBadge = data.image_confidence >= 70
+        ? `<span class="confidence-badge confidence-high">High confidence: ${data.image_confidence}%</span>`
+        : data.image_confidence >= 40
+        ? `<span class="confidence-badge confidence-medium">Medium confidence: ${data.image_confidence}%</span>`
+        : data.image_confidence > 0
+        ? `<span class="confidence-badge confidence-low">Low confidence: ${data.image_confidence}%</span>`
+        : '';
+
+      const sources = data.source_urls.map(url =>
+        `<a href="${url}" target="_blank">${url}</a>`
+      ).join('');
+
+      output.innerHTML = `
+        <div class="detail-view">
+          <button class="back-button" onclick="location.reload()">← Back to Search</button>
+          <h3>${data.name}</h3>
+          <p><strong>Company:</strong> ${data.company || 'N/A'}</p>
+          ${data.photo_url ? `<img src="${data.photo_url}" alt="Headshot">${confidenceBadge}` : '<p><em>No headshot available</em></p>'}
+          <p><strong>Bio:</strong><br>${data.bio}</p>
+          <div class="sources"><strong>Sources:</strong>${sources}</div>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
