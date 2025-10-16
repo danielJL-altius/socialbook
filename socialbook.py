@@ -13,7 +13,11 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Initialize OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+if not OPENAI_API_KEY:
+    print("WARNING: OPENAI_API_KEY not set. Please add it in Railway dashboard.")
+    client = None
+else:
+    client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = Flask(__name__)
 
