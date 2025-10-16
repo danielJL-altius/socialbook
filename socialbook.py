@@ -234,6 +234,13 @@ def stats():
     })
 
 if __name__ == '__main__':
+    # Initialize database with sample data if empty
+    try:
+        from init_data import initialize_profiles
+        initialize_profiles()
+    except Exception as e:
+        print(f"Could not initialize sample data: {e}")
+
     print(f"Social Book initialized with {db.get_profile_count()} profiles")
     port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=False)
