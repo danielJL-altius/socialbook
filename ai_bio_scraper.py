@@ -12,7 +12,11 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Initialize OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+if not OPENAI_API_KEY:
+    print("WARNING: OPENAI_API_KEY not set. Some features will not work.")
+    client = None
+else:
+    client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = Flask(__name__)
 
@@ -226,6 +230,10 @@ Be very strict about rejecting illustrations and cartoons."""
         return False, 0
 
 def summarize_bio(name, company, texts):
+    if not client:
+        # Return basic summary if OpenAI not available
+        return f"{name} is a professional at {company}. " + texts[:200] + "..."
+
     prompt = f"""
 You are a helpful assistant. Based on the following web content, write a professional bio for {name} from {company}.
 Focus on their roles, achievements, industries, and relevant history.
