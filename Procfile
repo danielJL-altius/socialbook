@@ -1,1 +1,1 @@
-web: gunicorn socialbook:app
+web: bash start.sh
